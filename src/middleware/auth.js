@@ -1,20 +1,13 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('jsonwebtoken')
+const { catchAsyncErrors } = require('./catchAyncErrors')
+const ErrorHandler = require('../utils/ErrorHandler')
 
-exports.requireAuth = async (req, res, next) => {
-    const header = req.headers.authorization
-    if (!header) {
-        return res.status(401).json({ message: 'Authorization header missing' });
+exports.isAuthenticated = catchAsyncErrors(async (req, res, next) => {
+    const { token } = req.cookies
+    if (!token) {
+        return next(new ErrorHandler ("Please login to access the resource!", 401))
     }
-    const parts = header.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-        return res.status(401).json({ message: 'Invalid authorization header format' });
-    }
-    const token = parts[1];
-    try {
-        const payload = jwt.verify(token, process.env.JWT_SECRET || 'defaultsecret');
-        req.user = payload; // Attach user info to request object
-        next();
-    } catch (error) {
-        return res.status(401).json({ message: 'Invalid or expired token' });
-    }
-}
+    const { id } = jwt.verify(token, process.env.JWT_SECRET)
+    req.id = id
+    next()
+})

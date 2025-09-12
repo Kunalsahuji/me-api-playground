@@ -1,39 +1,265 @@
+// const Profile = require('../models/Profile');
+
+// const getProfiles = async (req, res) => {
+//     try {
+//         const { page = 1, limit = 10, search, skills } = req.query;
+//         let query = {};
+
+//         if (search) {
+//             query.$text = { $search: search };
+//         }
+
+//         if (skills) {
+//             const skillsArray = skills.split(',').map(s => s.trim());
+//             query.skills = { $in: skillsArray };
+//         }
+
+//         const profiles = await Profile.find(query)
+//             .select('-password')
+//             .limit(limit * 1)
+//             .skip((page - 1) * limit)
+//             .sort({ createdAt: -1 });
+
+//         const total = await Profile.countDocuments(query);
+
+//         res.json({
+//             profiles,
+//             totalPages: Math.ceil(total / limit),
+//             currentPage: page,
+//             total
+//         });
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// };
+
+// const getProfile = async (req, res, next) => {
+//     try {
+//         const profile = await Profile.findById(req.user.id).select('-password');
+//         if (!profile) return res.status(404).json({ message: 'Profile not found' });
+//         res.json(profile);
+//     } catch (err) {
+//         next(err);
+//     }
+// };
+
+
+// const updateProfile = async (req, res, next) => {
+//     try {
+//         const profile = await Profile.findOneAndUpdate(req.user.id,
+//             req.body, { new: true, runValidators: true }
+//         ).select('-password');
+//         if (!profile) return res.status(404).json({ message: 'Profile not found' });
+//         res.json({ message: "Profile updated successfully", profile });
+//     } catch (err) {
+//         next(err);
+//     }
+// };
+
+// const deleteProfile = async (req, res, next) => {
+//     try {
+//         const profile = Profile.findById(req.user.id)
+//         if (profile) {
+//             await Profile.findByIdAndDelete(req.user.id)
+//             res.json({ message: "Profile deleted successfully" });
+
+//         } else {
+//             return res.status(404).json({ message: 'Profile Not Found' })
+//         }
+//     } catch (error) {
+//         next(error)
+//     }
+// }
+
+// module.exports = {
+//     getProfiles,
+//     getProfile,
+//     updateProfile,
+//     deleteProfile
+// };
 const Profile = require('../models/Profile');
+const { catchAsyncErrors } = require('../middleware/catchAyncErrors');
+const ErrorHandler = require('../utils/ErrorHandler');
 
 
-exports.getProfile = async (req, res, next) => {
-    try {
-        const profile = await Profile.findOne();
-        if (!profile) return res.status(404).json({ message: 'Profile not found' });
-        res.json(profile);
-    } catch (err) {
-        next(err);
+module.exports.getProfiles = catchAsyncErrors(async (req, res, next) => {
+    const { page = 1, limit = 10, search, skills } = req.query;
+    let query = {};
+
+    if (search) {
+        query.$text = { $search: search };
     }
-};
 
-
-exports.createProfile = async (req, res, next) => {
-    try {
-        // if profile exists, prevent creating another (single-candidate assumption)
-        const existing = await Profile.findOne();
-        if (existing) return res.status(400).json({ message: 'Profile already exists' });
-
-
-        const profile = new Profile(req.body);
-        await profile.save();
-        res.status(201).json(profile);
-    } catch (err) {
-        next(err);
+    if (skills) {
+        const skillsArray = skills.split(',').map(s => s.trim());
+        query.skills = { $in: skillsArray };
     }
-};
 
+    const profiles = await Profile.find(query)
+        .select('-password')
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .sort({ createdAt: -1 });
 
-exports.updateProfile = async (req, res, next) => {
-    try {
-        const profile = await Profile.findOneAndUpdate({}, req.body, { new: true, upsert: false });
-        if (!profile) return res.status(404).json({ message: 'Profile not found' });
-        res.json(profile);
-    } catch (err) {
-        next(err);
+    const total = await Profile.countDocuments(query);
+
+    res.json({
+        success: true,
+        profiles,
+        totalPages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        total
+    });
+});
+
+module.exports.getProfileById = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findById(req.params.id).select('-password');
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
     }
-};
+
+    res.json({
+        success: true,
+        profile
+    });
+});
+
+
+module.exports.getCurrentProfile = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findById(req.id).select('-password');
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    res.json({
+        success: true,
+        profile
+    });
+});
+
+module.exports.updateProfile = catchAsyncErrors(async (req, res, next) => {
+    if (req.body.password) {
+        return next(new ErrorHandler('Password cannot be updated through this route', 400));
+    }
+
+    const profile = await Profile.findByIdAndUpdate(
+        req.id,
+        req.body,
+        {
+            new: true,
+            runValidators: true
+        }
+    ).select('-password');
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    res.json({
+        success: true,
+        message: "Profile updated successfully",
+        profile
+    });
+});
+
+module.exports.deleteProfile = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findById(req.id);
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    await Profile.findByIdAndDelete(req.id);
+    res.clearCookie("Token");
+
+    res.json({
+        success: true,
+        message: "Profile deleted successfully"
+    });
+});
+
+// Protected route - Update specific fields of profile
+// PATCH /api/profiles/skills (requires authentication)
+module.exports.updateSkills = catchAsyncErrors(async (req, res, next) => {
+    const { skills } = req.body;
+
+    if (!skills || !Array.isArray(skills)) {
+        return next(new ErrorHandler('Skills must be provided as an array', 400));
+    }
+
+    const profile = await Profile.findByIdAndUpdate(
+        req.id,
+        { skills },
+        { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    res.json({
+        success: true,
+        message: "Skills updated successfully",
+        skills: profile.skills
+    });
+});
+
+// Protected route - Add education entry
+// POST /api/profiles/education (requires authentication)
+module.exports.addEducation = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findById(req.id);
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    profile.education.push(req.body);
+    await profile.save();
+
+    res.json({
+        success: true,
+        message: "Education added successfully",
+        education: profile.education
+    });
+});
+
+// Protected route - Add work experience
+// POST /api/profiles/work (requires authentication)
+module.exports.addWork = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findById(req.id);
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    profile.work.push(req.body);
+    await profile.save();
+
+    res.json({
+        success: true,
+        message: "Work experience added successfully",
+        work: profile.work
+    });
+});
+
+// Protected route - Update links
+// PATCH /api/profiles/links (requires authentication)
+module.exports.updateLinks = catchAsyncErrors(async (req, res, next) => {
+    const profile = await Profile.findByIdAndUpdate(
+        req.id,
+        { links: req.body },
+        { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!profile) {
+        return next(new ErrorHandler('Profile not found', 404));
+    }
+
+    res.json({
+        success: true,
+        message: "Links updated successfully",
+        links: profile.links
+    });
+});
