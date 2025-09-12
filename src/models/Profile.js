@@ -84,7 +84,7 @@ ProfileSchema.methods.comparepassword = function (password) {
 
 ProfileSchema.methods.getJWTToken = function () {
     return jwt.sign(
-        { id: this._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE }
+        { id: this._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d'}
     )
 }
 

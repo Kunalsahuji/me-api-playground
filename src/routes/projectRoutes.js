@@ -15,12 +15,12 @@ const {
 const router = express.Router();
 
 // Public routes
-router.get('/', getProjects); // GET /api/projects?search=ecommerce&skills=react,nodejs&owner=userId&page=1&limit=10
-router.get('/search', searchProjects); // GET /api/projects/search?skills=react,nodejs&minSkills=2&sortBy=createdAt&order=desc
-router.get('/:id', getProject); // GET /api/projects/64f9876543210fedcba98765
+router.get('/', getProjects); // GET /api/project?search=ecommerce&skills=react,nodejs&owner=userId&page=1&limit=10
+router.get('/search', searchProjects); // GET /api/project/search?skills=react,nodejs&minSkills=2&sortBy=createdAt&order=desc
+router.get('/:id', getProject); // GET /api/project/64f9876543210fedcba98765
 
 // Protected routes - require authentication
-router.get('/user/my', isAuthenticated, getMyProjects); // GET /api/projects/user/my?page=1&limit=10
+router.get('/user/my', isAuthenticated, getMyProjects); // GET /api/project/user/my?page=1&limit=10
 
 router.post('/', isAuthenticated, [
     body('title').notEmpty().withMessage('Project title is required'),

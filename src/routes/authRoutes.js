@@ -25,6 +25,6 @@ router.post('/login', [
 
 // Protected routes
 router.get('/me', isAuthenticated, currentProfile);
-router.post('/logout', isAuthenticated, logout);
+router.get('/logout', isAuthenticated, logout);
 
 module.exports = router;

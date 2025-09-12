@@ -32,8 +32,8 @@ app.use(sessioin({
     secret: process.env.EXPRESS_SESSION_SECRET
 }))
 const cookieparser = require('cookie-parser');
-const ErrorHandler = require('./utils/ErrorHandler');
 app.use(cookieparser())
+const ErrorHandler = require('./utils/ErrorHandler');
 
 //routes
 app.use('/api/v1/auth', authRoutes)
@@ -45,9 +45,10 @@ app.get('/api/v1/health', (req, res) => {
 })
 
 // error handling
-// app.all("*", (req, res, next) => {
-//     next(new ErrorHandler(`Requested URL Not Found ${req.url}`, 404))
-// })
+// Matches everything
+app.use((req, res, next) => {
+    next(new ErrorHandler(`Requested URL Not Found ${req.url}`, 404))
+})
 
 // generatedErrors Middleware
 const { generatedErrors } = require('./middleware/generatedErrors');
