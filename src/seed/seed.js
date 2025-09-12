@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 const doenv = require('dotenv').config()
-const Profile = require('../src/models/Profile')
-const Project = require('../src/models/Project')
+const Profile = require('../models/Profile')
+const Project = require('../models/Project')
 
 const sampleProfile = {
     name: 'Kunal Sahu',
     email: 'kunal@example.com',
+    password:'Kunal@123',
     education: [
         {
             degree: 'MERN Full Stack Certificate',
